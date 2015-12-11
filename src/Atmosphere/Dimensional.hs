@@ -6,6 +6,7 @@
 module Atmosphere.Dimensional
        ( Atmos(..)
        , atmosphere
+       , atmosphereSmooth
        , altitudeFromPressure
        ) where
 
@@ -21,18 +22,25 @@ data Atmos a = Atmos { atmosTemperature :: ThermodynamicTemperature a
                      , atmosViscosity :: DynamicViscosity a
                      , atmosKinematicViscosity :: KinematicViscosity a
                      }
+  deriving (Show)
 
 atmosphere :: (Floating a, Ord a) => Length a -> Atmos a
-atmosphere alt = Atmos
-                 { atmosTemperature        = temp *~ kelvin
-                 , atmosPressure           = pressure *~ pascal
-                 , atmosDensity            = density *~ (kilo gram / meter ^ pos3)
-                 , atmosSpeedOfSound       = asound *~ (meter / second)
-                 , atmosViscosity          = viscosity *~ (newton * second / meter ^ pos2)
-                 , atmosKinematicViscosity = kinematicViscosity *~ (meter ^ pos2 / second)
-                 }
+atmosphere = atmosphere' A.siAtmosphere
+
+atmosphereSmooth :: (Floating a, Ord a) => Length a -> Atmos a
+atmosphereSmooth = atmosphere' A.siAtmosphereSmooth
+
+atmosphere' :: (Floating a, Eq a) => (a -> A.Atmos a) -> Length a -> Atmos a
+atmosphere' f alt = Atmos
+                    { atmosTemperature        = temp *~ kelvin
+                    , atmosPressure           = pressure *~ pascal
+                    , atmosDensity            = density *~ (kilo gram / meter ^ pos3)
+                    , atmosSpeedOfSound       = asound *~ (meter / second)
+                    , atmosViscosity          = viscosity *~ (newton * second / meter ^ pos2)
+                    , atmosKinematicViscosity = kinematicViscosity *~ (meter ^ pos2 / second)
+                    }
   where
-    A.Atmos temp pressure density asound viscosity kinematicViscosity = A.siAtmosphere (alt /~ meter)
+    A.Atmos temp pressure density asound viscosity kinematicViscosity = f (alt /~ meter)
 
 altitudeFromPressure :: (Floating a, Ord a) => Pressure a -> Length a
 altitudeFromPressure dimPressure = siAltitude *~ meter

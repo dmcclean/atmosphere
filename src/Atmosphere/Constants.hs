@@ -18,18 +18,18 @@ module Atmosphere.Constants
 
 import Data.List( zip4 )
 
-_FT2METERS :: (Ord a, Floating a) => a
-_KELVIN2RANKINE :: (Ord a, Floating a) => a
-_PSF2NSM :: (Ord a, Floating a) => a
-_SCF2KCM :: (Ord a, Floating a) => a
-_TZERO :: (Ord a, Floating a) => a
-_PZERO :: (Ord a, Floating a) => a
-_RHOZERO :: (Ord a, Floating a) => a
-_AZERO :: (Ord a, Floating a) => a
-_BETAVISC :: (Ord a, Floating a) => a
-_SUTH :: (Ord a, Floating a) => a
-_REARTH :: (Ord a, Floating a) => a
-_GMR :: (Ord a, Floating a) => a
+_FT2METERS :: (Floating a) => a
+_KELVIN2RANKINE :: (Floating a) => a
+_PSF2NSM :: (Floating a) => a
+_SCF2KCM :: (Floating a) => a
+_TZERO :: (Floating a) => a
+_PZERO :: (Floating a) => a
+_RHOZERO :: (Floating a) => a
+_AZERO :: (Floating a) => a
+_BETAVISC :: (Floating a) => a
+_SUTH :: (Floating a) => a
+_REARTH :: (Floating a) => a
+_GMR :: (Floating a) => a
 
 -- | mult. ft. to get meters (exact)
 _FT2METERS = 0.3048

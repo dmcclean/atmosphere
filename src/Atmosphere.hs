@@ -3,12 +3,15 @@
 module Atmosphere
        ( Atmos(..)
        , siAtmosphere
+       , siAtmosphereSmooth
        , usAtmosphere
        , atmosphere
+       , atmosphereSmooth
        , siAltitudeFromPressure
        ) where
 
 import Atmosphere.Constants
+import Math.Polynomial
 
 data Atmos a = Atmos { atmosTemperature :: a
                      , atmosPressure :: a
@@ -32,7 +35,13 @@ data Atmos a = Atmos { atmosTemperature :: a
    > kinematic viscosity - m^2/s
 -}
 siAtmosphere :: (Floating a, Ord a) => a -> Atmos a
-siAtmosphere alt_m =
+siAtmosphere = siAtmosphere' atmosphere
+
+siAtmosphereSmooth :: (Floating a, Eq a) => a -> Atmos a
+siAtmosphereSmooth = siAtmosphere' atmosphereSmooth
+
+siAtmosphere' :: (Floating a) => (a -> (a,a,a)) -> a -> Atmos a
+siAtmosphere' f alt_m =
   Atmos { atmosTemperature = temp
         , atmosPressure = pressure
         , atmosDensity = density
@@ -42,7 +51,7 @@ siAtmosphere alt_m =
         }
   where
     alt_km = 0.001*alt_m
-    (sigma, delta, theta) = atmosphere alt_km
+    (sigma, delta, theta) = f alt_km
     temp = _TZERO * theta
     pressure = _PZERO * delta
     density = _RHOZERO * sigma
@@ -107,7 +116,7 @@ siAltitudeFromPressure pressureIn = 1000*alt
       | 0.0 == tgradI = htabI - tbase / _GMR * (log (deltaIn / ptabI))
       | otherwise     = htabI + tbase/tgradI*((deltaIn/ptabI)**(-tgradI/_GMR) - 1)
 
-metricViscosity :: (Floating a, Ord a) => a -> a
+metricViscosity :: (Floating a) => a -> a
 metricViscosity theta = _BETAVISC*sqrt(t*t*t)/(t+_SUTH)
   where
     t = theta * _TZERO
@@ -147,3 +156,38 @@ atmosphere alt = (sigma, delta, theta)
       | 0.0 == tgradI = ptabI*exp(-_GMR*deltah/tbase)
       | otherwise     = ptabI*(tbase/tlocal)**(_GMR/tgradI)
     sigma = delta/theta
+
+{-
+
+A smooth approximation of the model.
+delta is a 9th order polynomial approximation derived using R, max error 0.002
+theta is a 9th order polynomial approximation derived using R, max error 0.02
+-}
+atmosphereSmooth :: (Floating a, Eq a) => a -> (a,a,a)
+atmosphereSmooth h = (sigma, delta, theta)
+  where
+    sigma = delta / theta
+    delta = deltaH h
+    theta = thetaH h
+    deltaH = evalPoly $ poly LE [  1.000089e+00
+                                , -1.171864e-01
+                                ,  5.081180e-03
+                                , -5.244425e-05
+                                , -3.613845e-06
+                                ,  1.669225e-07
+                                , -3.317844e-09
+                                ,  3.595433e-11
+                                , -2.068676e-13
+                                ,  4.959128e-16
+                                ]
+    thetaH = evalPoly $ poly LE [  1.001541e+00
+                                , -1.131267e-02
+                                , -5.555655e-03
+                                ,  8.056253e-04
+                                , -4.953411e-05
+                                ,  1.683472e-06
+                                , -3.350431e-08
+                                ,  3.870836e-10
+                                , -2.401129e-12
+                                ,  6.182736e-15
+                                ]

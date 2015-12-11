@@ -27,6 +27,7 @@ library
    build-depends:       base >= 4 && < 5
                        , dimensional >= 1.0.0.0
                        , dimensional-tf >= 0.1.1
+                       , polynomial >= 0.7.2
 
 
 test-suite unit-tests
