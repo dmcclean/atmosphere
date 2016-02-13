@@ -9,6 +9,7 @@ module Atmosphere
        ) where
 
 import Atmosphere.Constants
+import Data.Maybe (fromMaybe)
 
 data Atmos a = Atmos { atmosTemperature :: a
                      , atmosPressure :: a
@@ -103,11 +104,11 @@ siAltitudeFromPressure pressureIn = 1000*alt
           | otherwise = htab0
         getI [] = error "something went wrong"
 
-    h
-      | 0.0 == tgradI = htabI - tbase / _GMR * (log (deltaIn / ptabI))
-      | otherwise     = htabI + tbase/tgradI*((deltaIn/ptabI)**(-tgradI/_GMR) - 1)
+    h = h' tgradI
+    h' (Just tgrad) = htabI + tbase/tgrad*((deltaIn/ptabI)**(-tgrad/_GMR) - 1)
+    h' Nothing   = htabI - tbase / _GMR * (log (deltaIn / ptabI))
 
-metricViscosity :: (Floating a, Ord a) => a -> a
+metricViscosity :: (Floating a) => a -> a
 metricViscosity theta = _BETAVISC*sqrt(t*t*t)/(t+_SUTH)
   where
     t = theta * _TZERO
@@ -139,11 +140,13 @@ atmosphere alt = (sigma, delta, theta)
         getI [] = error "something went wrong"
 
     deltah = h - htabI              -- height above local base
-    tlocal = tbase + tgradI*deltah  -- local temperature
+
+    tgrad' = fromMaybe 0 tgradI
+    tlocal = tbase + tgrad'*deltah  -- local temperature
 
     theta  =  tlocal/_TZERO    -- temperature ratio
 
-    delta
-      | 0.0 == tgradI = ptabI*exp(-_GMR*deltah/tbase)
-      | otherwise     = ptabI*(tbase/tlocal)**(_GMR/tgradI)
+    delta = delta' tgradI
+    delta' Nothing = ptabI*exp(-_GMR*deltah/tbase)
+    delta' (Just tgrad) = ptabI*(tbase/tlocal)**(_GMR/tgrad)
     sigma = delta/theta
