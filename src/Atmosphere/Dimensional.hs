@@ -22,7 +22,7 @@ data Atmos a = Atmos { atmosTemperature :: ThermodynamicTemperature a
                      }
   deriving (Show)
 
-atmosphere :: (Floating a, Ord a) => Length a -> Atmos a
+atmosphere :: (Floating a) => Length a -> Atmos a
 atmosphere alt = Atmos
                  { atmosTemperature        = A._TZERO * theta
                  , atmosPressure           = A._PZERO * delta
@@ -37,7 +37,7 @@ atmosphere alt = Atmos
     viscosity = A._BETAVISC*sqrt(t*t*t)/(t+(A._SUTH / (1 *~ kelvin)))
     density = A._RHOZERO * sigma
 
-altitudeFromPressure :: (Floating a, Ord a) => Pressure a -> Length a
+altitudeFromPressure :: (Floating a) => Pressure a -> Length a
 altitudeFromPressure = undefined
 
 {-

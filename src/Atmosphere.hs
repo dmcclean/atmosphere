@@ -1,4 +1,5 @@
 {-# OPTIONS_GHC -Wall #-}
+{-# LANGUAGE NoImplicitPrelude #-}
 
 module Atmosphere
        ( Atmos(..)
@@ -8,8 +9,10 @@ module Atmosphere
        , siAltitudeFromPressure
        ) where
 
-import Atmosphere.Constants
-import Data.Maybe (fromMaybe)
+import qualified Atmosphere.Dimensional as D
+import qualified Atmosphere.Constants as A
+import Numeric.Units.Dimensional.Prelude
+import Numeric.Units.Dimensional.NonSI (degreeRankine, foot, slug, poundForce)
 
 data Atmos a = Atmos { atmosTemperature :: a
                      , atmosPressure :: a
@@ -18,6 +21,7 @@ data Atmos a = Atmos { atmosTemperature :: a
                      , atmosViscosity :: a
                      , atmosKinematicViscosity :: a
                      }
+  deriving (Show)
 
 {- |
    atmosphere in SI units
@@ -32,24 +36,17 @@ data Atmos a = Atmos { atmosTemperature :: a
    > viscosity           - N-s/m^2
    > kinematic viscosity - m^2/s
 -}
-siAtmosphere :: (Floating a, Ord a) => a -> Atmos a
+siAtmosphere :: (Floating a) => a -> Atmos a
 siAtmosphere alt_m =
-  Atmos { atmosTemperature = temp
-        , atmosPressure = pressure
-        , atmosDensity = density
-        , atmosSpeedOfSound = asound
-        , atmosViscosity = viscosity
-        , atmosKinematicViscosity = kinematicViscosity
+  Atmos { atmosTemperature = temp /~ kelvin
+        , atmosPressure = pressure /~ (newton / square meter)
+        , atmosDensity = density /~ (kilo gram / cubic meter)
+        , atmosSpeedOfSound = asound /~ (meter / second)
+        , atmosViscosity = viscosity /~ (newton * second / meter^pos2)
+        , atmosKinematicViscosity = kinematicViscosity /~ (meter^pos2 / second)
         }
   where
-    alt_km = 0.001*alt_m
-    (sigma, delta, theta) = atmosphere alt_km
-    temp = _TZERO * theta
-    pressure = _PZERO * delta
-    density = _RHOZERO * sigma
-    asound = _AZERO * sqrt theta
-    viscosity = metricViscosity theta
-    kinematicViscosity = viscosity/density
+    D.Atmos temp pressure density asound viscosity kinematicViscosity = D.atmosphere (alt_m *~ meter)
 
 {- |
    atmosphere in imperial units
@@ -64,24 +61,17 @@ siAtmosphere alt_m =
    > viscosity           - slugs/(ft-s)
    > kinematic viscosity - ft^2/s
 -}
-usAtmosphere :: (Floating a, Ord a) => a -> Atmos a
+usAtmosphere :: (Floating a) => a -> Atmos a
 usAtmosphere alt_ft =
-  Atmos { atmosTemperature = temp
-        , atmosPressure = pressure
-        , atmosDensity = density
-        , atmosSpeedOfSound = asound
-        , atmosViscosity = viscosity
-        , atmosKinematicViscosity = kinematicViscosity
+  Atmos { atmosTemperature = temp /~ degreeRankine
+        , atmosPressure = pressure /~ (poundForce / square foot)
+        , atmosDensity = density /~ (slug / cubic foot)
+        , atmosSpeedOfSound = asound /~ (foot / second)
+        , atmosViscosity = viscosity /~ (slug / (foot * second))
+        , atmosKinematicViscosity = kinematicViscosity /~ (foot^pos2 / second)
         }
   where
-    alt_km = 0.001*_FT2METERS*alt_ft
-    (sigma, delta, theta) = atmosphere alt_km
-    temp = _KELVIN2RANKINE*_TZERO*theta
-    pressure = _PZERO*delta/47.88
-    density = _RHOZERO*sigma/515.379
-    asound = (_AZERO/_FT2METERS)*sqrt theta
-    viscosity=(1.0/_PSF2NSM)*metricViscosity theta
-    kinematicViscosity = viscosity/density
+    D.Atmos temp pressure density asound viscosity kinematicViscosity = D.atmosphere (alt_ft *~ foot)
 
 {- |
    Compute altitude at which the standard atmosphere has a certain pressure.
@@ -90,28 +80,8 @@ usAtmosphere alt_ft =
 
    Output: Altitude in meters
 -}
-siAltitudeFromPressure :: (Floating a, Ord a) => a -> a
-siAltitudeFromPressure pressureIn = 1000*alt
-  where
-    alt = _REARTH / (_REARTH/h - 1)
-    deltaIn = pressureIn / _PZERO
-
-    (htabI, tbase, ptabI, tgradI) = getI htpgTable
-      where
-        getI [htab'] = htab'
-        getI (htab0:htab1@(_,_,delta',_):htabs)
-          | deltaIn < delta'    = getI (htab1:htabs)
-          | otherwise = htab0
-        getI [] = error "something went wrong"
-
-    h = h' tgradI
-    h' (Just tgrad) = htabI + tbase/tgrad*((deltaIn/ptabI)**(-tgrad/_GMR) - 1)
-    h' Nothing   = htabI - tbase / _GMR * (log (deltaIn / ptabI))
-
-metricViscosity :: (Floating a) => a -> a
-metricViscosity theta = _BETAVISC*sqrt(t*t*t)/(t+_SUTH)
-  where
-    t = theta * _TZERO
+siAltitudeFromPressure :: (Floating a) => a -> a
+siAltitudeFromPressure = (/~ meter) . D.altitudeFromPressure . (*~ (newton / square meter))
 
 {- |
    Compute temperature, density, and pressure in standard atmosphere.
@@ -126,27 +96,7 @@ metricViscosity theta = _BETAVISC*sqrt(t*t*t)/(t+_SUTH)
    > delta - pressure/sea-level standard pressure
    > theta - temperature/sea-level std. temperature
 -}
-atmosphere :: (Floating a, Ord a) => a -> (a,a,a)
-atmosphere alt = (sigma, delta, theta)
+atmosphere :: (Floating a) => a -> (a,a,a)
+atmosphere alt = (sigma /~ one, delta /~ one, theta /~ one)
   where
-    h = alt*_REARTH/(alt+_REARTH) -- geometric to geopotential altitude
-
-    (htabI, tbase, ptabI, tgradI) = getI htpgTable
-      where
-        getI [htab'] = htab'
-        getI (htab0:htab1@(h',_,_,_):htabs)
-          | h > h'    = getI (htab1:htabs)
-          | otherwise = htab0
-        getI [] = error "something went wrong"
-
-    deltah = h - htabI              -- height above local base
-
-    tgrad' = fromMaybe 0 tgradI
-    tlocal = tbase + tgrad'*deltah  -- local temperature
-
-    theta  =  tlocal/_TZERO    -- temperature ratio
-
-    delta = delta' tgradI
-    delta' Nothing = ptabI*exp(-_GMR*deltah/tbase)
-    delta' (Just tgrad) = ptabI*(tbase/tlocal)**(_GMR/tgrad)
-    sigma = delta/theta
+    (sigma, delta, theta) = A.atmosphere (alt *~ kilo meter)

@@ -21,6 +21,7 @@ data Atmos a = Atmos { atmosTemperature :: ThermodynamicTemperature a
                      , atmosViscosity :: DynamicViscosity a
                      , atmosKinematicViscosity :: KinematicViscosity a
                      }
+  deriving (Show)
 
 atmosphere :: (Floating a, Ord a) => Length a -> Atmos a
 atmosphere alt = Atmos
