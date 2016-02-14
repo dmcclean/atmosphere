@@ -19,9 +19,7 @@ cabal-version:       >=1.8
 
 library
    hs-source-dirs:      src
-   exposed-modules:     Atmosphere
-                        Atmosphere.Dimensional
-                        Atmosphere.DimensionalTF
+   exposed-modules:     Atmosphere.Dimensional
    other-modules:       Atmosphere.Constants
 
    build-depends:       base >= 4 && < 5
