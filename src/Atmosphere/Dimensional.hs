@@ -1,5 +1,7 @@
 {-# OPTIONS_GHC -Wall #-}
 
+{-# LANGUAGE NegativeLiterals #-}
+
 -- | This is a thin wrapper on top of the atmos package.
 -- It provides the exaxt same functions but uses units
 -- from the dimensional package.
@@ -7,6 +9,8 @@ module Atmosphere.Dimensional
        ( Atmos(..)
        , atmosphere
        , altitudeFromPressure
+       , vaporPressureOfWaterAtSaturation
+       , relativeHumidityFromTemperatureAndDewpoint
        ) where
 
 import qualified Atmosphere as A
@@ -39,3 +43,21 @@ altitudeFromPressure dimPressure = siAltitude *~ meter
   where
     siAltitude = A.siAltitudeFromPressure siPressure
     siPressure = dimPressure /~ pascal
+
+vaporPressureOfWaterAtSaturation :: (Floating a) => ThermodynamicTemperature a -> Pressure a
+vaporPressureOfWaterAtSaturation t = (1 *~ pascal) * exp (a * t^pos2 + b * t + c + d * t^neg1)
+  where
+    a = 1.2378847e-5 *~ kelvin^neg2
+    b = -1.9121316e-2 *~ kelvin^neg1
+    c = 33.93711047 *~ one
+    d = -6.3431645e3 *~ kelvin
+
+enhancementFactor :: (Fractional a) => Pressure a -> ThermodynamicTemperature a -> Dimensionless a
+enhancementFactor p t = alpha + beta * p + gamma * t^pos2
+  where
+    alpha = 1.00062 *~ one
+    beta = 3.14e-8 *~ pascal^neg1
+    gamma = 5.6e-7 *~ kelvin^neg2
+
+relativeHumidityFromTemperatureAndDewpoint :: (Floating a) => Pressure a -> ThermodynamicTemperature a -> ThermodynamicTemperature a -> Dimensionless a
+relativeHumidityFromTemperatureAndDewpoint p t td = (enhancementFactor p td * vaporPressureOfWaterAtSaturation td) / (enhancementFactor p t * vaporPressureOfWaterAtSaturation t)
